@@ -2,11 +2,16 @@
 package applescript
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/AVTAVANTTOUT2/apple-music-mcp/internal/domain"
 )
+
+// jsonLocaleDecimal matches JSON numeric literals that use a comma decimal separator
+// (common when AppleScript formats reals on French macOS locales).
+var jsonLocaleDecimal = regexp.MustCompile(`:(-?\d+),(\d+)`)
 
 // ParseKV parses AppleScript output in KEY:VALUE format (one per line).
 // The value is everything after the first colon on each line.
@@ -47,9 +52,19 @@ func GetKVInt(kv map[string]string, key string) int {
 	return n
 }
 
+// NormalizeJSONNumbers rewrites locale-formatted numeric literals in JSON payloads.
+func NormalizeJSONNumbers(raw string) string {
+	return jsonLocaleDecimal.ReplaceAllString(raw, ":$1.$2")
+}
+
+// normalizeLocaleNumber converts AppleScript locale decimals to Go-compatible floats.
+func normalizeLocaleNumber(value string) string {
+	return strings.ReplaceAll(value, ",", ".")
+}
+
 // GetKVFloat returns a float value.
 func GetKVFloat(kv map[string]string, key string) float64 {
-	v := GetKV(kv, key, "0")
+	v := normalizeLocaleNumber(GetKV(kv, key, "0"))
 	f, _ := strconv.ParseFloat(v, 64)
 	return f
 }

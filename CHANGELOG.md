@@ -2,6 +2,21 @@
 
 All notable changes to apple-music-mcp will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- **Install URL (404)**: README and `install.sh` now point to `raw.githubusercontent.com/.../scripts/install.sh` instead of a non-existent release asset; future releases also attach `install.sh` as an asset
+- **osascript argv**: `.applescript` files are invoked without `-l AppleScript` / `--`, fixing all JSON-based MCP tools (`music_search`, `music_playlists`, `music_favorites`, etc.)
+- **Locale decimals**: French macOS decimal commas in AppleScript JSON output are normalized before parsing
+- **play_track mapping**: MCP `play_track` / `play_album` / `play_artist` actions are mapped to AppleScript `play` handlers
+
+### Added
+
+- **`test-live` command**: Full JARVIS workflow (search → play → favorite → playlist → cleanup)
+- **JARVIS documentation**: [docs/jarvis-integration.md](docs/jarvis-integration.md)
+- **Unit tests**: osascript argv builder, JSON locale normalization, playback action mapping
+
 ## [0.1.0] — 2026-08-11
 
 ### Initial Release

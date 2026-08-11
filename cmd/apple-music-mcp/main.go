@@ -13,6 +13,7 @@ import (
 	"github.com/AVTAVANTTOUT2/apple-music-mcp/internal/config"
 	"github.com/AVTAVANTTOUT2/apple-music-mcp/internal/domain"
 	"github.com/AVTAVANTTOUT2/apple-music-mcp/internal/logging"
+	"github.com/AVTAVANTTOUT2/apple-music-mcp/internal/livetest"
 	"github.com/AVTAVANTTOUT2/apple-music-mcp/internal/mcpserver"
 	"github.com/AVTAVANTTOUT2/apple-music-mcp/internal/version"
 	sembed "github.com/AVTAVANTTOUT2/apple-music-mcp/scripts"
@@ -70,7 +71,7 @@ Usage:
   apple-music-mcp install       Install MCP configuration for clients
   apple-music-mcp uninstall     Remove MCP configuration
   apple-music-mcp configure     Configure MCP client integration
-  apple-music-mcp test-live     Run live tests against Music.app
+  apple-music-mcp test-live     Run live tests against Music.app (requires APPLE_MUSIC_MCP_LIVE_TESTS=1)
 
 Environment:
   APPLE_MUSIC_MCP_READ_ONLY=1     Disable all mutations
@@ -282,9 +283,29 @@ func cmdConfigure(cfg *config.Config, logger *logging.Logger) {
 func cmdTestLive(cfg *config.Config, logger *logging.Logger) {
 	if !cfg.AllowLiveTests {
 		fmt.Println("Live tests are disabled. Set APPLE_MUSIC_MCP_LIVE_TESTS=1 to enable.")
-		return
+		os.Exit(1)
 	}
-	fmt.Println("Live tests not yet implemented for v0.1.0.")
+
+	fmt.Println("🎵 Apple Music MCP — Live Test Suite")
+	fmt.Println("====================================")
+	fmt.Println()
+
+	ctx := context.Background()
+	result, err := livetest.Run(ctx, livetest.Options{})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "live test runner failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	for _, line := range result.Lines {
+		fmt.Println(line)
+	}
+
+	fmt.Println()
+	fmt.Printf("Summary: %d passed, %d failed\n", result.Passed, result.Failed)
+	if result.Failed > 0 {
+		os.Exit(1)
+	}
 }
 
 func getBinaryPath() string {

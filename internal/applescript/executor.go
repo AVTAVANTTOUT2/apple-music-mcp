@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -69,13 +70,7 @@ func (e *Executor) runScript(ctx context.Context, scriptPath string, language st
 	ctx, cancel := context.WithTimeout(ctx, e.timeout)
 	defer cancel()
 
-	// Build osascript command: osascript -l <language> script.<ext> -- arg1 arg2 ...
-	cmdArgs := []string{"-l", language, scriptPath}
-	if len(args) > 0 {
-		cmdArgs = append(cmdArgs, "--")
-		cmdArgs = append(cmdArgs, args...)
-	}
-
+	cmdArgs := buildOsascriptArgs(scriptPath, language, args)
 	cmd := exec.CommandContext(ctx, "osascript", cmdArgs...)
 
 	var stdout, stderr bytes.Buffer
@@ -129,12 +124,36 @@ func (e *Executor) RunAppleScriptString(ctx context.Context, script string) (str
 	return strings.TrimSpace(stdout.String()), nil
 }
 
+// buildOsascriptArgs builds the argv slice for osascript.
+//
+// .applescript files must be invoked as:
+//
+//	osascript /path/to/script.applescript arg1 arg2
+//
+// Using "-l AppleScript" together with "--" makes osascript pass "--" as argv[1]
+// to the script, which breaks every handler that reads item 1 of argv.
+//
+// JXA (.js) files keep the language flag but never use "--".
+func buildOsascriptArgs(scriptPath, language string, args []string) []string {
+	ext := strings.ToLower(filepath.Ext(scriptPath))
+	if ext == ".applescript" {
+		cmdArgs := []string{scriptPath}
+		return append(cmdArgs, args...)
+	}
+
+	cmdArgs := []string{"-l", language, scriptPath}
+	return append(cmdArgs, args...)
+}
+
 // ParseJSONOutput parses JSON output from a script that returns a JSON string.
+// AppleScript on French macOS locales may emit decimal commas in numbers; these
+// are normalized to JSON-compatible decimal points before unmarshaling.
 func ParseJSONOutput(output string, target interface{}) error {
 	if output == "" {
 		return fmt.Errorf("empty script output")
 	}
-	if err := json.Unmarshal([]byte(output), target); err != nil {
+	normalized := NormalizeJSONNumbers(output)
+	if err := json.Unmarshal([]byte(normalized), target); err != nil {
 		return fmt.Errorf("failed to parse script JSON output: %w (raw: %.200s)", err, output)
 	}
 	return nil
