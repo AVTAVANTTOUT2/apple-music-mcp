@@ -6,7 +6,6 @@ package musicapp
 import (
 	"context"
 	"embed"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -157,6 +156,8 @@ func (b *Backend) GetPlayerState(ctx context.Context) (*domain.PlaybackStatus, e
 
 // Playback executes a playback command.
 func (b *Backend) Playback(ctx context.Context, cmd domain.PlaybackCommand) (*domain.PlaybackResult, error) {
+	cmd = normalizePlaybackCommand(cmd)
+
 	args := []string{string(cmd.Action)}
 	if cmd.TargetID != "" {
 		args = append(args, cmd.TargetID)
@@ -224,7 +225,7 @@ func (b *Backend) Preferences(ctx context.Context, cmd domain.PreferenceCommand)
 	}
 
 	var result domain.PreferenceResult
-	if err := json.Unmarshal([]byte(out), &result); err != nil {
+	if err := applescript.ParseJSONOutput(out, &result); err != nil {
 		return &domain.PreferenceResult{Success: false, BackendName: b.Name()}, fmt.Errorf("failed to parse preference result: %w", err)
 	}
 	result.BackendName = b.Name()
@@ -254,40 +255,64 @@ func (b *Backend) Search(ctx context.Context, query domain.SearchQuery) (*domain
 		switch st {
 		case domain.SearchTypeTrack:
 			var resp struct {
-				Tracks []domain.TrackInfo `json:"tracks"`
-				Total  int                `json:"total"`
+				Success bool               `json:"success"`
+				Tracks  []domain.TrackInfo `json:"tracks"`
+				Total   int                `json:"total"`
 			}
-			if err := json.Unmarshal([]byte(out), &resp); err == nil {
-				result.Tracks = resp.Tracks
-				result.Total += resp.Total
+			if err := applescript.ParseJSONOutput(out, &resp); err != nil {
+				b.logger.Warn("search tracks JSON parse failed: %v", err)
+				continue
 			}
+			if !resp.Success {
+				continue
+			}
+			result.Tracks = resp.Tracks
+			result.Total += resp.Total
 		case domain.SearchTypeAlbum:
 			var resp struct {
-				Albums []domain.AlbumInfo `json:"albums"`
-				Total  int                `json:"total"`
+				Success bool               `json:"success"`
+				Albums  []domain.AlbumInfo `json:"albums"`
+				Total   int                `json:"total"`
 			}
-			if err := json.Unmarshal([]byte(out), &resp); err == nil {
-				result.Albums = resp.Albums
-				result.Total += resp.Total
+			if err := applescript.ParseJSONOutput(out, &resp); err != nil {
+				b.logger.Warn("search albums JSON parse failed: %v", err)
+				continue
 			}
+			if !resp.Success {
+				continue
+			}
+			result.Albums = resp.Albums
+			result.Total += resp.Total
 		case domain.SearchTypeArtist:
 			var resp struct {
+				Success bool                `json:"success"`
 				Artists []domain.ArtistInfo `json:"artists"`
 				Total   int                 `json:"total"`
 			}
-			if err := json.Unmarshal([]byte(out), &resp); err == nil {
-				result.Artists = resp.Artists
-				result.Total += resp.Total
+			if err := applescript.ParseJSONOutput(out, &resp); err != nil {
+				b.logger.Warn("search artists JSON parse failed: %v", err)
+				continue
 			}
+			if !resp.Success {
+				continue
+			}
+			result.Artists = resp.Artists
+			result.Total += resp.Total
 		case domain.SearchTypePlaylist:
 			var resp struct {
+				Success   bool                  `json:"success"`
 				Playlists []domain.PlaylistInfo `json:"playlists"`
 				Total     int                   `json:"total"`
 			}
-			if err := json.Unmarshal([]byte(out), &resp); err == nil {
-				result.Playlists = resp.Playlists
-				result.Total += resp.Total
+			if err := applescript.ParseJSONOutput(out, &resp); err != nil {
+				b.logger.Warn("search playlists JSON parse failed: %v", err)
+				continue
 			}
+			if !resp.Success {
+				continue
+			}
+			result.Playlists = resp.Playlists
+			result.Total += resp.Total
 		}
 	}
 
@@ -347,7 +372,7 @@ func (b *Backend) Playlists(ctx context.Context, cmd domain.PlaylistCommand) (*d
 	}
 
 	var result domain.PlaylistResult
-	if err := json.Unmarshal([]byte(out), &result); err != nil {
+	if err := applescript.ParseJSONOutput(out, &result); err != nil {
 		return &domain.PlaylistResult{Success: false, BackendName: b.Name()}, fmt.Errorf("failed to parse playlist result: %w", err)
 	}
 	result.BackendName = b.Name()
@@ -369,7 +394,7 @@ func (b *Backend) Library(ctx context.Context, cmd domain.LibraryCommand) (*doma
 	}
 
 	var result domain.LibraryResult
-	if err := json.Unmarshal([]byte(out), &result); err != nil {
+	if err := applescript.ParseJSONOutput(out, &result); err != nil {
 		return &domain.LibraryResult{Success: false, BackendName: b.Name()}, fmt.Errorf("failed to parse library result: %w", err)
 	}
 	result.BackendName = b.Name()
@@ -404,10 +429,37 @@ func (b *Backend) Favorites(ctx context.Context, cmd domain.FavoriteCommand) (*d
 	}
 
 	var result domain.FavoriteResult
-	if err := json.Unmarshal([]byte(out), &result); err != nil {
+	if err := applescript.ParseJSONOutput(out, &result); err != nil {
 		return &domain.FavoriteResult{Success: false, BackendName: b.Name()}, fmt.Errorf("failed to parse favorite result: %w", err)
 	}
 	result.BackendName = b.Name()
 
 	return &result, nil
+}
+
+// normalizePlaybackCommand maps MCP-level playback actions to AppleScript handlers.
+func normalizePlaybackCommand(cmd domain.PlaybackCommand) domain.PlaybackCommand {
+	switch cmd.Action {
+	case domain.ActionPlayTrack:
+		cmd.Action = domain.ActionPlay
+		if cmd.TargetType == "" {
+			cmd.TargetType = "track"
+		}
+	case domain.ActionPlayAlbum:
+		cmd.Action = domain.ActionPlay
+		if cmd.TargetType == "" {
+			cmd.TargetType = "album"
+		}
+	case domain.ActionPlayArtist:
+		cmd.Action = domain.ActionPlay
+		if cmd.TargetType == "" {
+			cmd.TargetType = "artist"
+		}
+	case domain.ActionPlayPlaylist:
+		cmd.Action = domain.ActionPlay
+		if cmd.TargetType == "" {
+			cmd.TargetType = "playlist"
+		}
+	}
+	return cmd
 }

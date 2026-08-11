@@ -55,4 +55,5 @@ jobs:
             dist/apple-music-mcp-darwin-amd64.tar.gz
             dist/apple-music-mcp-darwin-universal.tar.gz
             dist/checksums.txt
+            scripts/install.sh
           generate_release_notes: true

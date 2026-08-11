@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # install.sh — Install apple-music-mcp from GitHub Releases
-# Usage: curl -fsSL https://github.com/AVTAVANTTOUT2/apple-music-mcp/releases/latest/download/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/AVTAVANTTOUT2/apple-music-mcp/main/scripts/install.sh | bash
 
 REPO="AVTAVANTTOUT2/apple-music-mcp"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"

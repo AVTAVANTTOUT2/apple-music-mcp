@@ -16,8 +16,10 @@ apple-music-mcp connects AI assistants (Cursor, Claude Desktop, Codex, VS Code) 
 
 ```bash
 # macOS 13+ (Apple Silicon or Intel)
-curl -fsSL https://github.com/AVTAVANTTOUT2/apple-music-mcp/releases/latest/download/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/AVTAVANTTOUT2/apple-music-mcp/main/scripts/install.sh | bash
 ```
+
+The installer script is versioned in the repository (`scripts/install.sh`). Release assets ship the compiled binaries (`.tar.gz` + `checksums.txt`); use the command above for one-line install.
 
 Or download the binary directly from [Releases](https://github.com/AVTAVANTTOUT2/apple-music-mcp/releases).
 
@@ -196,6 +198,20 @@ go build -o apple-music-mcp ./cmd/apple-music-mcp/
 go test -race ./...
 go vet ./...
 ```
+
+### Live tests (Music.app)
+
+Run the full JARVIS workflow against the real Music.app (search, play, favorite, playlist):
+
+```bash
+APPLE_MUSIC_MCP_LIVE_TESTS=1 ./apple-music-mcp test-live
+```
+
+Requires Music.app, automation permission, and at least one track matching the search query (default: `Werenoi`).
+
+### JARVIS / Agent integration
+
+See [docs/jarvis-integration.md](docs/jarvis-integration.md) for MCP tool reference, example prompts, and troubleshooting.
 
 ## License
 
