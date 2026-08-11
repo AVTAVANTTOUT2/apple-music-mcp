@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    name: Lint & Test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: gofmt
+        run: |
+          if [ "$(gofmt -l . | wc -l)" -gt 0 ]; then
+            echo "Files need formatting:"
+            gofmt -l .
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test -race -v ./... -timeout 120s
+
+      - name: Build
+        run: go build -o apple-music-mcp ./cmd/apple-music-mcp/
+
+      - name: Verify version
+        run: ./apple-music-mcp version
+
+      - name: Verify stdout is clean JSON
+        run: |
+          echo '{"jsonrpc":"2.0","method":"ping","id":1}' | ./apple-music-mcp serve 2>/dev/null > /tmp/mcp-output.json
+          cat /tmp/mcp-output.json
+          python3 -c "import json; json.loads(open('/tmp/mcp-output.json').read())" && echo "OK: valid JSON"

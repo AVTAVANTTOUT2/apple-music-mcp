@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    name: Build & Release
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Run tests
+        run: go test -race -v ./... -timeout 120s
+
+      - name: Build arm64 binary
+        run: |
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w -X github.com/AVTAVANTTOUT2/apple-music-mcp/internal/version.Version=${GITHUB_REF_NAME#v} -X github.com/AVTAVANTTOUT2/apple-music-mcp/internal/version.Commit=${GITHUB_SHA} -X github.com/AVTAVANTTOUT2/apple-music-mcp/internal/version.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o dist/apple-music-mcp-darwin-arm64 ./cmd/apple-music-mcp/
+
+      - name: Build amd64 binary
+        run: |
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w -X github.com/AVTAVANTTOUT2/apple-music-mcp/internal/version.Version=${GITHUB_REF_NAME#v} -X github.com/AVTAVANTTOUT2/apple-music-mcp/internal/version.Commit=${GITHUB_SHA} -X github.com/AVTAVANTTOUT2/apple-music-mcp/internal/version.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o dist/apple-music-mcp-darwin-amd64 ./cmd/apple-music-mcp/
+
+      - name: Build Universal binary
+        run: |
+          lipo -create -output dist/apple-music-mcp-darwin-universal dist/apple-music-mcp-darwin-arm64 dist/apple-music-mcp-darwin-amd64
+
+      - name: Create tarballs
+        run: |
+          cd dist
+          tar czf apple-music-mcp-darwin-arm64.tar.gz apple-music-mcp-darwin-arm64
+          tar czf apple-music-mcp-darwin-amd64.tar.gz apple-music-mcp-darwin-amd64
+          tar czf apple-music-mcp-darwin-universal.tar.gz apple-music-mcp-darwin-universal
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          shasum -a 256 *.tar.gz > checksums.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/apple-music-mcp-darwin-arm64.tar.gz
+            dist/apple-music-mcp-darwin-amd64.tar.gz
+            dist/apple-music-mcp-darwin-universal.tar.gz
+            dist/checksums.txt
+          generate_release_notes: true

@@ -1,0 +1,62 @@
+# Binaries
+apple-music-mcp
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+dist/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.*
+
+# Dependency directories
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Secrets and keys
+*.p8
+*.key
+*.pem
+*.crt
+.env
+.env.*
+credentials.json
+*.token
+
+# Apple Music data (never commit)
+**/Music Library*
+*.musiclibrary
+*.itl
+*.xml
+
+# Logs
+*.log
+logs/
+
+# TCC database (never commit)
+**/TCC.db
+**/tcc.db
+
+# Temporary test files
+__apple_music_mcp_e2e_*
+testdata/tmp/
+
+# Build artifacts
+build/
