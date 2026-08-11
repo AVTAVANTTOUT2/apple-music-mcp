@@ -17,8 +17,8 @@ func TestGetKVFloat_LocaleDecimal(t *testing.T) {
 	t.Parallel()
 
 	kv := map[string]string{
-		"POSITION":        "56,99100112915",
-		"TRACK_DURATION":  "173,143005371094",
+		"POSITION":       "56,99100112915",
+		"TRACK_DURATION": "173,143005371094",
 	}
 	if got := GetKVFloat(kv, "POSITION"); got < 56.99 || got > 56.992 {
 		t.Fatalf("POSITION float = %v, want ~56.991", got)
