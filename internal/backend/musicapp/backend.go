@@ -5,6 +5,7 @@ package musicapp
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -35,6 +36,39 @@ func NewBackend(logger *logging.Logger) *Backend {
 // SetScriptsDir sets the directory containing the AppleScript files.
 func (b *Backend) SetScriptsDir(dir string) {
 	b.scriptsDir = dir
+}
+
+// ExtractEmbeddedScripts extracts embedded AppleScript files to a temporary directory.
+// Callers should use embed.FS from the scripts package. Returns the temp directory path.
+func ExtractEmbeddedScripts(fs embed.FS) (string, error) {
+	tmpDir, err := os.MkdirTemp("", "apple-music-mcp-scripts-*")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp dir: %w", err)
+	}
+
+	entries, err := fs.ReadDir(".")
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		return "", fmt.Errorf("failed to read embedded scripts: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		data, err := fs.ReadFile(entry.Name())
+		if err != nil {
+			os.RemoveAll(tmpDir)
+			return "", fmt.Errorf("failed to read embedded file %s: %w", entry.Name(), err)
+		}
+		targetPath := filepath.Join(tmpDir, entry.Name())
+		if err := os.WriteFile(targetPath, data, 0700); err != nil {
+			os.RemoveAll(tmpDir)
+			return "", fmt.Errorf("failed to write script %s: %w", entry.Name(), err)
+		}
+	}
+
+	return tmpDir, nil
 }
 
 func (b *Backend) scriptPath(name string) string {

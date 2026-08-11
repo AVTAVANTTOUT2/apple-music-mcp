@@ -23,25 +23,25 @@ on run argv
                     set foundTracks to (search thePlaylist for searchQuery)
                     set trackList to "["
                     set firstItem to true
-                    set count to 0
+                    set cnt to 0
                     repeat with t in foundTracks
-                        if count ≥ 50 then exit repeat
+                        if cnt ≥ 50 then exit repeat
                         if not firstItem then set trackList to trackList & ","
                         set trackList to trackList & my trackToJSON(t)
                         set firstItem to false
-                        set count to count + 1
+                        set cnt to cnt + 1
                     end repeat
                     set trackList to trackList & "]"
-                    return "{\"success\":true,\"tracks\":" & trackList & ",\"total\":" & count & ",\"backend\":\"musicapp\"}"
+                    return "{\"success\":true,\"tracks\":" & trackList & ",\"total\":" & cnt & ",\"backend\":\"musicapp\"}"
 
                 else if searchType is "album" then
                     set foundTracks to (search thePlaylist for searchQuery)
                     set albumNames to {}
                     set albumList to "["
                     set firstItem to true
-                    set count to 0
+                    set cnt to 0
                     repeat with t in foundTracks
-                        if count ≥ 50 then exit repeat
+                        if cnt ≥ 50 then exit repeat
                         try
                             set albName to album of t
                             if albName is not missing value and albName is not in albumNames then
@@ -64,21 +64,21 @@ on run argv
                                 end try
                                 set albumList to albumList & "{\"name\":" & my escapeJSON(albName) & ",\"artist\":" & my escapeJSON(albArtist) & ",\"favorited\":" & albFav & ",\"year\":" & albYear & "}"
                                 set firstItem to false
-                                set count to count + 1
+                                set cnt to cnt + 1
                             end if
                         end try
                     end repeat
                     set albumList to albumList & "]"
-                    return "{\"success\":true,\"albums\":" & albumList & ",\"total\":" & count & ",\"backend\":\"musicapp\"}"
+                    return "{\"success\":true,\"albums\":" & albumList & ",\"total\":" & cnt & ",\"backend\":\"musicapp\"}"
 
                 else if searchType is "artist" then
                     set foundTracks to (search thePlaylist for searchQuery)
                     set artistNames to {}
                     set artistList to "["
                     set firstItem to true
-                    set count to 0
+                    set cnt to 0
                     repeat with t in foundTracks
-                        if count ≥ 50 then exit repeat
+                        if cnt ≥ 50 then exit repeat
                         try
                             set artName to artist of t
                             if artName is not missing value and artName is not in artistNames then
@@ -86,20 +86,20 @@ on run argv
                                 if not firstItem then set artistList to artistList & ","
                                 set artistList to artistList & "{\"name\":" & my escapeJSON(artName) & "}"
                                 set firstItem to false
-                                set count to count + 1
+                                set cnt to cnt + 1
                             end if
                         end try
                     end repeat
                     set artistList to artistList & "]"
-                    return "{\"success\":true,\"artists\":" & artistList & ",\"total\":" & count & ",\"backend\":\"musicapp\"}"
+                    return "{\"success\":true,\"artists\":" & artistList & ",\"total\":" & cnt & ",\"backend\":\"musicapp\"}"
 
                 else if searchType is "playlist" then
                     set allPlaylists to every playlist
                     set playlistList to "["
                     set firstItem to true
-                    set count to 0
+                    set cnt to 0
                     repeat with pl in allPlaylists
-                        if count ≥ 50 then exit repeat
+                        if cnt ≥ 50 then exit repeat
                         try
                             set plName to name of pl
                             if plName contains searchQuery then
@@ -117,12 +117,12 @@ on run argv
                                 end try
                                 set playlistList to playlistList & "{\"name\":" & my escapeJSON(plName) & ",\"persistent_id\":\"" & plPID & "\",\"kind\":\"" & plKind & "\",\"track_count\":" & plCount & "}"
                                 set firstItem to false
-                                set count to count + 1
+                                set cnt to cnt + 1
                             end if
                         end try
                     end repeat
                     set playlistList to playlistList & "]"
-                    return "{\"success\":true,\"playlists\":" & playlistList & ",\"total\":" & count & ",\"backend\":\"musicapp\"}"
+                    return "{\"success\":true,\"playlists\":" & playlistList & ",\"total\":" & cnt & ",\"backend\":\"musicapp\"}"
                 end if
 
             on error errMsg
@@ -184,7 +184,7 @@ on escapeJSON(str)
     if str is missing value then return "\"\""
     try
         set str to str as text
-        set escaped to do shell script "python3 -c " & quoted form of ("import sys,json; print(json.dumps(sys.stdin.read().rstrip('\\n')))") with input str without altering line endings
+        set escaped to do shell script "echo " & quoted form of str & " | python3 -c " & quoted form of ("import sys,json; print(json.dumps(sys.stdin.read().rstrip(chr(10))))")
         return escaped
     on error
         return "\"\""

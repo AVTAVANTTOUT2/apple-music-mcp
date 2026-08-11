@@ -15,6 +15,7 @@ import (
 	"github.com/AVTAVANTTOUT2/apple-music-mcp/internal/logging"
 	"github.com/AVTAVANTTOUT2/apple-music-mcp/internal/mcpserver"
 	"github.com/AVTAVANTTOUT2/apple-music-mcp/internal/version"
+	sembed "github.com/AVTAVANTTOUT2/apple-music-mcp/scripts"
 )
 
 func main() {
@@ -83,23 +84,24 @@ func cmdServe(cfg *config.Config, logger *logging.Logger) {
 	logger.Info("starting apple-music-mcp server v%s", version.Short())
 
 	backend := musicapp.NewBackend(logger)
-	if cfg.ScriptsDir != "" {
-		backend.SetScriptsDir(cfg.ScriptsDir)
+
+	// Use embedded scripts — extract to temp dir for osascript
+	scriptsDir, err := musicapp.ExtractEmbeddedScripts(sembed.FS)
+	if err != nil {
+		logger.Warn("failed to extract embedded scripts: %v, falling back to filesystem lookup", err)
+		// Fallback to filesystem search
+		if cfg.ScriptsDir != "" {
+			backend.SetScriptsDir(cfg.ScriptsDir)
+		} else {
+			for _, dir := range []string{"scripts", "../scripts", "../../scripts"} {
+				if _, err := os.Stat(dir); err == nil {
+					backend.SetScriptsDir(dir)
+					break
+				}
+			}
+		}
 	} else {
-		// Look for scripts directory relative to the binary
-		if exe, err := os.Executable(); err == nil {
-			scriptsDir := exe + "/../../scripts"
-			if _, err := os.Stat(scriptsDir); err == nil {
-				backend.SetScriptsDir(scriptsDir)
-			}
-		}
-		// Fallback: look in current directory and parent
-		for _, dir := range []string{"scripts", "../scripts", "../../scripts"} {
-			if _, err := os.Stat(dir); err == nil {
-				backend.SetScriptsDir(dir)
-				break
-			}
-		}
+		backend.SetScriptsDir(scriptsDir)
 	}
 
 	server := mcpserver.NewServer(cfg, logger, backend)
@@ -107,7 +109,6 @@ func cmdServe(cfg *config.Config, logger *logging.Logger) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Handle SIGTERM/SIGINT gracefully
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
@@ -127,9 +128,6 @@ func cmdDoctor(cfg *config.Config, logger *logging.Logger) {
 	fmt.Println("========================")
 	fmt.Println()
 
-	// System info
-	fmt.Printf("macOS:     checking...\n")
-	fmt.Printf("Arch:      checking...\n")
 	fmt.Printf("Go:        %s\n", version.Info())
 	fmt.Println()
 
@@ -153,6 +151,20 @@ func cmdDoctor(cfg *config.Config, logger *logging.Logger) {
 	fmt.Println()
 	fmt.Println("🔐 Permissions")
 	backend := musicapp.NewBackend(logger)
+
+	// Use embedded scripts
+	scriptsDir, err := musicapp.ExtractEmbeddedScripts(sembed.FS)
+	if err == nil {
+		backend.SetScriptsDir(scriptsDir)
+	} else {
+		for _, dir := range []string{"scripts", "../scripts", "../../scripts"} {
+			if _, err := os.Stat(dir); err == nil {
+				backend.SetScriptsDir(dir)
+				break
+			}
+		}
+	}
+
 	ctx := context.Background()
 	if backend.IsAvailable(ctx) {
 		fmt.Println("  Automation: GRANTED ✅")
@@ -160,14 +172,12 @@ func cmdDoctor(cfg *config.Config, logger *logging.Logger) {
 		fmt.Println("  Automation: NOT GRANTED ❌")
 		fmt.Println("  → Open System Settings > Privacy & Security > Automation")
 		fmt.Println("  → Enable the terminal/client that runs this tool for Music.app")
+		return
 	}
 
-	// Get player state
-	fmt.Println()
-	fmt.Println("▶️  Player State")
 	status, err := backend.GetPlayerState(ctx)
 	if err != nil {
-		fmt.Printf("  Error: %v ❌\n", err)
+		fmt.Printf("  Player State: Error — %v ❌\n", err)
 	} else {
 		fmt.Printf("  State:    %s\n", status.PlayerState)
 		fmt.Printf("  Volume:   %d%%\n", status.Volume)
@@ -183,7 +193,6 @@ func cmdDoctor(cfg *config.Config, logger *logging.Logger) {
 		}
 	}
 
-	// Capabilities summary
 	fmt.Println()
 	fmt.Println("📋 Capabilities")
 	caps, err := backend.Capabilities(ctx)
@@ -192,10 +201,6 @@ func cmdDoctor(cfg *config.Config, logger *logging.Logger) {
 	} else {
 		fmt.Printf("  Native capabilities:     %d\n", len(caps.NativeCapabilities))
 		fmt.Printf("  Unavailable capabilities: %d\n", len(caps.UnavailableCapabilities))
-		fmt.Println("  Key unavailable:")
-		for _, c := range caps.UnavailableCapabilities {
-			fmt.Printf("    - %s\n", c)
-		}
 	}
 
 	fmt.Println()
@@ -204,6 +209,9 @@ func cmdDoctor(cfg *config.Config, logger *logging.Logger) {
 
 func cmdCapabilities(cfg *config.Config, logger *logging.Logger) {
 	backend := musicapp.NewBackend(logger)
+	if scriptsDir, err := musicapp.ExtractEmbeddedScripts(sembed.FS); err == nil {
+		backend.SetScriptsDir(scriptsDir)
+	}
 	ctx := context.Background()
 	caps, err := backend.Capabilities(ctx)
 	if err != nil {
@@ -225,44 +233,9 @@ func cmdCapabilities(cfg *config.Config, logger *logging.Logger) {
 }
 
 func cmdInstall(cfg *config.Config, logger *logging.Logger) {
-	fmt.Println("Installation is not yet automated for v0.1.0.")
+	fmt.Println("✨ apple-music-mcp Installation")
 	fmt.Println()
-	fmt.Println("Manual configuration for Cursor:")
-	fmt.Println("  Add to ~/.cursor/mcp.json:")
-	fmt.Println(`  {
-    "mcpServers": {
-      "apple-music": {
-        "command": "/path/to/apple-music-mcp",
-        "args": ["serve"]
-      }
-    }
-  }`)
-	fmt.Println()
-	fmt.Println("Manual configuration for Claude Desktop:")
-	fmt.Println(`  Add to ~/Library/Application Support/Claude/claude_desktop_config.json:
-  {
-    "mcpServers": {
-      "apple-music": {
-        "command": "/path/to/apple-music-mcp",
-        "args": ["serve"]
-      }
-    }
-  }`)
-}
-
-func cmdUninstall(cfg *config.Config, logger *logging.Logger) {
-	fmt.Println("To uninstall, remove the apple-music-mcp binary and delete the MCP configuration entry from your client's config file.")
-	fmt.Println("No files are installed outside the binary location.")
-}
-
-func cmdConfigure(cfg *config.Config, logger *logging.Logger) {
-	client := "cursor"
-	if len(os.Args) > 2 {
-		client = os.Args[2]
-	}
-	fmt.Printf("Configuration for %s:\n", client)
-	fmt.Println()
-	exe, _ := os.Executable()
+	fmt.Println("For Cursor, add to ~/.cursor/mcp.json:")
 	fmt.Printf(`{
   "mcpServers": {
     "apple-music": {
@@ -270,16 +243,53 @@ func cmdConfigure(cfg *config.Config, logger *logging.Logger) {
       "args": ["serve"]
     }
   }
-}`, exe)
+}
+`, getBinaryPath())
 	fmt.Println()
+	fmt.Println("For Claude Desktop, add to ~/Library/Application Support/Claude/claude_desktop_config.json:")
+	fmt.Printf(`{
+  "mcpServers": {
+    "apple-music": {
+      "command": "%s",
+      "args": ["serve"]
+    }
+  }
+}
+`, getBinaryPath())
+}
+
+func cmdUninstall(cfg *config.Config, logger *logging.Logger) {
+	fmt.Println("To uninstall, remove the apple-music-mcp binary and delete the MCP configuration entry.")
+}
+
+func cmdConfigure(cfg *config.Config, logger *logging.Logger) {
+	client := "cursor"
+	if len(os.Args) > 2 {
+		client = os.Args[2]
+	}
+	fmt.Printf("Configuration for %s MCP client:\n\n", client)
+	fmt.Printf(`{
+  "mcpServers": {
+    "apple-music": {
+      "command": "%s",
+      "args": ["serve"]
+    }
+  }
+}
+`, getBinaryPath())
 }
 
 func cmdTestLive(cfg *config.Config, logger *logging.Logger) {
 	if !cfg.AllowLiveTests {
 		fmt.Println("Live tests are disabled. Set APPLE_MUSIC_MCP_LIVE_TESTS=1 to enable.")
-		fmt.Println("WARNING: Live tests will modify your Music.app state temporarily and attempt to restore it.")
 		return
 	}
 	fmt.Println("Live tests not yet implemented for v0.1.0.")
-	fmt.Println("This command will run real tests against your Music.app, capturing and restoring state.")
+}
+
+func getBinaryPath() string {
+	if exe, err := os.Executable(); err == nil {
+		return exe
+	}
+	return "/usr/local/bin/apple-music-mcp"
 }

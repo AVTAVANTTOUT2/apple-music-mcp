@@ -15,7 +15,7 @@ on run argv
                 set allPlaylists to every playlist
                 set playlistList to "["
                 set firstItem to true
-                set count to 0
+                set cnt to 0
                 repeat with pl in allPlaylists
                     if not firstItem then set playlistList to playlistList & ","
                     set plName to name of pl
@@ -264,7 +264,7 @@ on escapeJSON(str)
     if str is missing value then return "\"\""
     try
         set str to str as text
-        set escaped to do shell script "python3 -c " & quoted form of ("import sys,json; print(json.dumps(sys.stdin.read().rstrip('\\n')))") with input str without altering line endings
+        set escaped to do shell script "echo " & quoted form of str & " | python3 -c " & quoted form of ("import sys,json; print(json.dumps(sys.stdin.read().rstrip(chr(10))))")
         return escaped
     on error
         return "\"\""

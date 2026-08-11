@@ -40,20 +40,20 @@ on run argv
                 set allTracks to (tracks of first library playlist)
                 set favList to "["
                 set firstItem to true
-                set count to 0
+                set cnt to 0
                 repeat with t in allTracks
-                    if count ≥ 200 then exit repeat
+                    if cnt ≥ 200 then exit repeat
                     try
                         if favorited of t then
                             if not firstItem then set favList to favList & ","
                             set favList to favList & my trackToJSON(t)
                             set firstItem to false
-                            set count to count + 1
+                            set cnt to cnt + 1
                         end if
                     end try
                 end repeat
                 set favList to favList & "]"
-                return "{\"success\":true,\"favorites\":" & favList & ",\"total\":" & count & ",\"backend\":\"musicapp\"}"
+                return "{\"success\":true,\"favorites\":" & favList & ",\"total\":" & cnt & ",\"backend\":\"musicapp\"}"
 
             else if action is "favorite" then
                 if targetType is "track" then
@@ -135,7 +135,7 @@ on escapeJSON(str)
     if str is missing value then return "\"\""
     try
         set str to str as text
-        set escaped to do shell script "python3 -c " & quoted form of ("import sys,json; print(json.dumps(sys.stdin.read().rstrip('\\n')))") with input str without altering line endings
+        set escaped to do shell script "echo " & quoted form of str & " | python3 -c " & quoted form of ("import sys,json; print(json.dumps(sys.stdin.read().rstrip(chr(10))))")
         return escaped
     on error
         return "\"\""
