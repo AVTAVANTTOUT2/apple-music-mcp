@@ -191,33 +191,35 @@ on sortByDateAdded(trackList)
     return trackList
 end sortByDateAdded
 
-on trackToJSON(t)
-    try
-        set tPID to persistent ID of t
-        set tName to my escapeJSON(name of t)
-        set tArtist to my escapeJSON(artist of t)
-        set tAlbum to my escapeJSON(album of t)
-        set tDur to duration of t
+using terms from application "Music"
+    on trackToJSON(t)
         try
-            set tFav to favorited of t
+            set tPID to persistent ID of t
+            set tName to my escapeJSON(name of t)
+            set tArtist to my escapeJSON(artist of t)
+            set tAlbum to my escapeJSON(album of t)
+            set tDur to duration of t
+            try
+                set tFav to favorited of t
+            on error
+                set tFav to false
+            end try
+            try
+                set tYear to year of t
+            on error
+                set tYear to 0
+            end try
+            try
+                set tGenre to my escapeJSON(genre of t)
+            on error
+                set tGenre to "\"\""
+            end try
+            return "{\"name\":" & tName & ",\"artist\":" & tArtist & ",\"album\":" & tAlbum & ",\"persistent_id\":\"" & tPID & "\",\"duration\":" & tDur & ",\"favorited\":" & tFav & ",\"year\":" & tYear & ",\"genre\":" & tGenre & "}"
         on error
-            set tFav to false
+            return "{}"
         end try
-        try
-            set tYear to year of t
-        on error
-            set tYear to 0
-        end try
-        try
-            set tGenre to my escapeJSON(genre of t)
-        on error
-            set tGenre to "\"\""
-        end try
-        return "{\"name\":" & tName & ",\"artist\":" & tArtist & ",\"album\":" & tAlbum & ",\"persistent_id\":\"" & tPID & "\",\"duration\":" & tDur & ",\"favorited\":" & tFav & ",\"year\":" & tYear & ",\"genre\":" & tGenre & "}"
-    on error
-        return "{}"
-    end try
-end trackToJSON
+    end trackToJSON
+end using terms from
 
 on escapeJSON(str)
     if str is missing value then return "\"\""

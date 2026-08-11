@@ -235,28 +235,30 @@ on run argv
     end try
 end run
 
-on trackToJSON(t)
-    try
-        set tPID to persistent ID of t
-        set tName to my escapeJSON(name of t)
-        set tArtist to my escapeJSON(artist of t)
-        set tAlbum to my escapeJSON(album of t)
-        set tDur to duration of t
+using terms from application "Music"
+    on trackToJSON(t)
         try
-            set tFav to favorited of t
+            set tPID to persistent ID of t
+            set tName to my escapeJSON(name of t)
+            set tArtist to my escapeJSON(artist of t)
+            set tAlbum to my escapeJSON(album of t)
+            set tDur to duration of t
+            try
+                set tFav to favorited of t
+            on error
+                set tFav to false
+            end try
+            try
+                set tRating to rating of t
+            on error
+                set tRating to 0
+            end try
+            return "{\"name\":" & tName & ",\"artist\":" & tArtist & ",\"album\":" & tAlbum & ",\"persistent_id\":\"" & tPID & "\",\"duration\":" & tDur & ",\"favorited\":" & tFav & ",\"rating\":" & tRating & "}"
         on error
-            set tFav to false
+            return "{}"
         end try
-        try
-            set tRating to rating of t
-        on error
-            set tRating to 0
-        end try
-        return "{\"name\":" & tName & ",\"artist\":" & tArtist & ",\"album\":" & tAlbum & ",\"persistent_id\":\"" & tPID & "\",\"duration\":" & tDur & ",\"favorited\":" & tFav & ",\"rating\":" & tRating & "}"
-    on error
-        return "{}"
-    end try
-end trackToJSON
+    end trackToJSON
+end using terms from
 
 on escapeJSON(str)
     if str is missing value then return "\"\""

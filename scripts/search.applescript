@@ -134,49 +134,51 @@ on run argv
     end try
 end run
 
-on trackToJSON(t)
-    try
-        set tName to my escapeJSON(name of t)
-    on error
-        set tName to "\"\""
-    end try
-    try
-        set tArtist to my escapeJSON(artist of t)
-    on error
-        set tArtist to "\"\""
-    end try
-    try
-        set tAlbum to my escapeJSON(album of t)
-    on error
-        set tAlbum to "\"\""
-    end try
-    try
-        set tPID to persistent ID of t
-    on error
-        set tPID to ""
-    end try
-    try
-        set tDur to duration of t
-    on error
-        set tDur to 0
-    end try
-    try
-        set tFav to favorited of t
-    on error
-        set tFav to false
-    end try
-    try
-        set tYear to year of t
-    on error
-        set tYear to 0
-    end try
-    try
-        set tGenre to my escapeJSON(genre of t)
-    on error
-        set tGenre to "\"\""
-    end try
-    return "{\"name\":" & tName & ",\"artist\":" & tArtist & ",\"album\":" & tAlbum & ",\"persistent_id\":\"" & tPID & "\",\"duration\":" & tDur & ",\"favorited\":" & tFav & ",\"year\":" & tYear & ",\"genre\":" & tGenre & "}"
-end trackToJSON
+using terms from application "Music"
+    on trackToJSON(t)
+        try
+            set tName to my escapeJSON(name of t)
+        on error
+            set tName to "\"\""
+        end try
+        try
+            set tArtist to my escapeJSON(artist of t)
+        on error
+            set tArtist to "\"\""
+        end try
+        try
+            set tAlbum to my escapeJSON(album of t)
+        on error
+            set tAlbum to "\"\""
+        end try
+        try
+            set tPID to persistent ID of t
+        on error
+            set tPID to ""
+        end try
+        try
+            set tDur to duration of t
+        on error
+            set tDur to 0
+        end try
+        try
+            set tFav to favorited of t
+        on error
+            set tFav to false
+        end try
+        try
+            set tYear to year of t
+        on error
+            set tYear to 0
+        end try
+        try
+            set tGenre to my escapeJSON(genre of t)
+        on error
+            set tGenre to "\"\""
+        end try
+        return "{\"name\":" & tName & ",\"artist\":" & tArtist & ",\"album\":" & tAlbum & ",\"persistent_id\":\"" & tPID & "\",\"duration\":" & tDur & ",\"favorited\":" & tFav & ",\"year\":" & tYear & ",\"genre\":" & tGenre & "}"
+    end trackToJSON
+end using terms from
 
 on escapeJSON(str)
     if str is missing value then return "\"\""

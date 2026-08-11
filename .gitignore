@@ -1,5 +1,5 @@
 # Binaries
-apple-music-mcp
+/apple-music-mcp
 *.exe
 *.exe~
 *.dll
